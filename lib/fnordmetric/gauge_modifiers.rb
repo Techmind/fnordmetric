@@ -7,6 +7,8 @@ module FnordMetric::GaugeModifiers
       incr_uniq(gauge, value)
     elsif gauge.average? 
       incr_avg(gauge, value)
+    elsif gauge.calculate_per_request? 
+      incr_per_request(gauge, value)
     else
       incr_tick(gauge, value)
     end
@@ -33,6 +35,19 @@ module FnordMetric::GaugeModifiers
       if (_new == 1) || (_new == true) #redis vs. em-redis
         @redis.incr(gauge.tick_key(time, :"sessions-count")).callback do |sc|
           field_name ? incr_field_by(gauge, field_name, value) : incr_tick(gauge, value)
+        end
+      end
+    end
+  end
+  
+  def incr_per_request(gauge, value)
+    @redis.incr(gauge.key(:request)).callback do |request_count|
+      @redis.incrby(gauge.key(:count), value).callback do |data_count|
+        @redis.hsenx(gauge.key, gauge.tick_at(time), data_count.to_f / request_count.to_f) do |_new|
+          if (_new == 1) || (_new == true)
+            @redis.set(gauge.key(:request), 0)
+            @redis.set(gauge.key(:count), 0)
+          end
         end
       end
     end

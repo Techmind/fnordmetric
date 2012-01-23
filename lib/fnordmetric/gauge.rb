@@ -50,7 +50,11 @@ class FnordMetric::Gauge
   def average?
     !!@opts[:average]
   end
-
+  
+  def calculate_per_request?
+    !!@opts[:average_per_request]
+  end
+  
   def add_redis(_redis)
     @opts[:redis] = _redis
   end
