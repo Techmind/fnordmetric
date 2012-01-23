@@ -2,7 +2,7 @@ class FnordMetric::Namespace
   
   attr_reader :handlers, :gauges, :opts, :key, :dashboards
 
-  @@opts = [:event, :gauge, :widget, :set_title, :active_users_available]
+  @@opts = [:event, :gauge, :widget, :set_title, :active_users_available, :purge_after, :list_max_length]
 
   def initialize(key, opts)    
     @gauges = Hash.new
@@ -27,6 +27,10 @@ class FnordMetric::Namespace
     if event[:_session]
       event[:_session_key] = announce_to_session(event).session_key 
     end
+           
+    purge_old_timeline(event[:time] - @opts[:purge_after]) if rand(100) < 100 && @opts[:purge_after]
+       
+    purge_old_typelist(event[:_type], @opts[:list_max_length]) if (rand(100) < 100) && @opts[:list_max_length]
 
     [
       @handlers[event[:_type].to_s],
@@ -50,6 +54,18 @@ class FnordMetric::Namespace
   def announce_to_timeline(event)
     timeline_key = key_prefix(:timeline)
     @redis.zadd(timeline_key, event[:_time], event[:_eid])
+  end
+
+  def purge_old_timeline(timestamp)
+    @redis.zremrangebyscore(key_prefix(:timeline), '0', timestamp.to_s)
+  end
+
+  def purge_old_typelist(type, max_line)
+    type_key = key_prefix("type-#{type}")
+    
+    @redis.llen(type_key).callback do |len|
+      @redis.ltrim(type_key, len - max_line, len) if len > max_line
+    end        
   end
 
   def announce_to_typelist(event)
