@@ -1,10 +1,18 @@
 module FnordMetric::GaugeModifiers
 
-  def set_max(gauge_name, value)
+  def set_max(gauge_name, value, uniq_name=nil)
     gauge = fetch_gauge(gauge_name)
-    @redis.hget(gauge.key, gauge.tick_at(time)).callback do |old|
-      @redis.hset(gauge.key, gauge.tick_at(time), value) unless !(old.nil?) && old.to_i > value
+    if gauge.three_dimensional?
+      @redis.zrank(gauge.tick_key(time), uniq_name).callback do |ret|
+      	@redis.zadd(gauge.tick_key(time), value, uniq_name).errback { |error| puts "Error: #{error}" } if ret.nil? || ret.to_i < value
+      	@redis.incrby(gauge.tick_key(time, :count), value)
+      end
+    else
+      @redis.hget(gauge.key, gauge.tick_at(time)).callback do |old|
+        @redis.hset(gauge.key, gauge.tick_at(time), value) unless !(old.nil?) && old.to_i > value
+      end
     end
+
   end
 
   def incr(gauge_name, value=1)
