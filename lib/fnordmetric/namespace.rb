@@ -28,9 +28,9 @@ class FnordMetric::Namespace
       event[:_session_key] = announce_to_session(event).session_key 
     end
            
-    purge_old_timeline(event[:time] - @opts[:purge_after]) if rand(100) < 100 && @opts[:purge_after]
+%%    purge_old_timeline(event[:time] - @opts[:purge_after]) if rand(100) < 100 && @opts[:purge_after]
        
-    purge_old_typelist(event[:_type], @opts[:list_max_length]) if (rand(100) < 100) && @opts[:list_max_length]
+%%    purge_old_typelist(event[:_type], @opts[:list_max_length]) if (rand(100) < 100) && @opts[:list_max_length]
 
     [
       @handlers[event[:_type].to_s],
